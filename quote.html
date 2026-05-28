@@ -1,0 +1,248 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>需求提交 — 艺鸿展览</title>
+    <meta name="description" content="提交您的展览需求，艺鸿展览专业顾问为您定制展台搭建方案和报价。">
+    <link rel="stylesheet" href="css/style.css">
+    <style>
+        .quote-form-card textarea { height:120px; resize:vertical; }
+        .quote-form-card input,
+        .quote-form-card select,
+        .quote-form-card textarea {
+            width:100%; padding:12px 15px; border:1px solid var(--border);
+            border-radius:var(--radius); font-size:14px; font-family:var(--font);
+            transition:var(--transition); margin-bottom:15px;
+        }
+        .quote-form-card input:focus,
+        .quote-form-card select:focus,
+        .quote-form-card textarea:focus {
+            outline:none; border-color:var(--primary-light);
+            box-shadow:0 0 0 3px rgba(46,134,193,0.15);
+        }
+        .quote-form-card label {
+            font-size:14px; font-weight:600; color:var(--text);
+            display:block; margin-bottom:5px;
+        }
+        .quote-form-card .required::after { content:' *'; color:red; }
+        .quote-tips {
+            background:var(--bg-gray); border-radius:var(--radius-lg);
+            padding:30px; margin-bottom:30px;
+        }
+        .quote-tips h3 { font-size:18px; color:var(--primary); margin-bottom:15px; }
+        .quote-tips li {
+            font-size:14px; color:var(--text-light); line-height:1.8;
+            margin-bottom:8px; padding-left:5px;
+        }
+        @media (max-width:768px) {
+            .quote-page { grid-template-columns:1fr; }
+        }
+    </style>
+</head>
+<body data-page="quote.html">
+
+<!-- ==================== 顶部导航 ==================== -->
+<header class="header">
+    <div class="header-inner">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">艺</div>
+            艺鸿展览<span>.com</span>
+        </a>
+        <nav class="nav">
+            <a href="index.html">首页</a>
+            <a href="cases.html">案例展示</a>
+            <a href="services.html">服务项目</a>
+            <a href="about.html">关于我们</a>
+            <a href="news.html">新闻资讯</a>
+            <a href="contact.html">联系我们</a>
+            <a href="quote.html" class="active btn btn-accent" style="padding:8px 20px;font-size:13px;">需求提交</a>
+        </nav>
+        <button class="mobile-toggle" aria-label="菜单">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</header>
+
+<!-- ==================== 页面横幅 ==================== -->
+<section class="page-banner" style="min-height:200px;">
+    <div class="container">
+        <h1>提交展览需求</h1>
+        <p>告诉我们您的需求，专业顾问为您定制方案和报价</p>
+    </div>
+</section>
+
+<!-- ==================== 需求表单 ==================== -->
+<section class="section" style="padding:40px 0;">
+    <div class="container">
+        <div class="quote-page">
+            <!-- 左侧：提交表单 -->
+            <div class="quote-form-card fade-in">
+                <h3>填写需求信息</h3>
+                <p style="font-size:13px;color:var(--text-light);margin-bottom:20px;">
+                    提交后我们将在 <strong>一个工作日内</strong> 与您联系，提供定制方案和报价。
+                </p>
+                <form action="https://formspree.io/f/YOUR_FORM_ID" method="POST">
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 15px;">
+                        <div>
+                            <label class="required">联系人</label>
+                            <input type="text" name="name" placeholder="您的姓名" required>
+                        </div>
+                        <div>
+                            <label class="required">联系电话</label>
+                            <input type="tel" name="phone" placeholder="手机或座机" required>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 15px;">
+                        <div>
+                            <label>公司名称</label>
+                            <input type="text" name="company" placeholder="公司/品牌名称">
+                        </div>
+                        <div>
+                            <label>邮箱地址</label>
+                            <input type="email" name="email" placeholder="用于接收方案">
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 15px;">
+                        <div>
+                            <label class="required">展会名称</label>
+                            <input type="text" name="exhibition" placeholder="如：厦门工博会" required>
+                        </div>
+                        <div>
+                            <label class="required">展会时间</label>
+                            <input type="text" name="exhibition_date" placeholder="如：2025年6月" required>
+                        </div>
+                    </div>
+                    <div style="display:grid;grid-template-columns:1fr 1fr;gap:0 15px;">
+                        <div>
+                            <label class="required">展馆地点</label>
+                            <input type="text" name="location" placeholder="如：厦门国际会展中心" required>
+                        </div>
+                        <div>
+                            <label class="required">展位面积</label>
+                            <select name="area" required>
+                                <option value="">请选择面积</option>
+                                <option value="9㎡以内（标准展位）">9㎡以内（标准展位）</option>
+                                <option value="18-36㎡">18-36㎡</option>
+                                <option value="54-90㎡">54-90㎡</option>
+                                <option value="100-200㎡">100-200㎡</option>
+                                <option value="200㎡以上">200㎡以上</option>
+                                <option value="暂不确定">暂不确定</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div>
+                        <label>预算范围</label>
+                        <select name="budget">
+                            <option value="">请选择预算范围（选填）</option>
+                            <option value="1万以下">1万以下</option>
+                            <option value="1-3万">1-3万</option>
+                            <option value="3-5万">3-5万</option>
+                            <option value="5-10万">5-10万</option>
+                            <option value="10-20万">10-20万</option>
+                            <option value="20万以上">20万以上</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="required">需求描述</label>
+                        <textarea name="requirement" placeholder="请描述您的具体需求，如：展台风格偏好、展示产品类型、是否需要LED屏/洽谈区等" required></textarea>
+                    </div>
+                    <div>
+                        <label>其他要求</label>
+                        <textarea name="other" placeholder="如：是否需要租赁家具、运输服务、额外搭建等" style="height:80px;"></textarea>
+                    </div>
+                    <button type="submit" class="btn btn-primary" style="width:100%;text-align:center;font-size:16px;padding:14px 30px;">
+                        提交需求，获取方案
+                    </button>
+                    <p style="font-size:12px;color:var(--text-light);margin-top:10px;text-align:center;">
+                        ✓ 信息仅用于报价沟通，不会对外公开
+                    </p>
+                </form>
+            </div>
+
+            <!-- 右侧：为什么找我们 -->
+            <div class="fade-in">
+                <div class="quote-tips">
+                    <h3>📋 提交后您将获得</h3>
+                    <ul style="list-style:none;padding:0;">
+                        <li>✓ 根据您的需求定制 <strong>2-3套设计方案</strong></li>
+                        <li>✓ 详细报价清单，<strong>无隐藏费用</strong></li>
+                        <li>✓ 专业顾问一对一 <strong>免费咨询</strong></li>
+                        <li>✓ 参考案例效果图供您对比</li>
+                    </ul>
+                </div>
+
+                <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:25px;margin-bottom:20px;">
+                    <h4 style="font-size:15px;color:var(--primary);margin-bottom:15px;">💡 报价前需确认的信息</h4>
+                    <ul style="font-size:13px;color:var(--text-light);line-height:1.8;padding-left:18px;">
+                        <li>展位面积和位置</li>
+                        <li>展馆的具体管理要求</li>
+                        <li>设计方案复杂程度</li>
+                        <li>是否异地搭建（涉及运输）</li>
+                    </ul>
+                </div>
+
+                <div style="background:white;border:1px solid var(--border);border-radius:var(--radius-lg);padding:25px;">
+                    <h4 style="font-size:15px;color:var(--primary);margin-bottom:15px;">📞 也可以直接联系我们</h4>
+                    <div style="font-size:14px;color:var(--text-light);line-height:2;">
+                        <p>📱 电话：<strong style="color:var(--text);">13850000033</strong></p>
+                        <p>💬 微信：<strong style="color:var(--text);">13850000033</strong></p>
+                        <p>📧 邮箱：info@yihongexpo.com</p>
+                    </div>
+                    <a href="contact.html" class="btn btn-outline" style="width:100%;text-align:center;margin-top:15px;">查看更多联系方式</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 页脚 ==================== -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">艺</div>
+                    艺鸿展览<span>.com</span>
+                </a>
+                <p>厦门市艺鸿会议展览服务有限公司<br>专注展览展示设计搭建一站式服务</p>
+            </div>
+            <div>
+                <h3>快速链接</h3>
+                <a href="cases.html">案例展示</a>
+                <a href="services.html">服务项目</a>
+                <a href="about.html">关于我们</a>
+                <a href="news.html">新闻资讯</a>
+            </div>
+            <div>
+                <h3>服务项目</h3>
+                <a href="services.html#design">展台设计</a>
+                <a href="services.html#construction">特装搭建</a>
+                <a href="services.html#standard">标准展位</a>
+                <a href="services.html#furniture">展具租赁</a>
+            </div>
+            <div>
+                <h3>联系方式</h3>
+                <p>电话：13850000033</p>
+                <p>邮箱：info@yihongexpo.com</p>
+                <p>微信：13850000033</p>
+                <p>地址：厦门市思明区明发国际新城15号701</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2024 厦门市艺鸿会议展览服务有限公司 版权所有</p>
+        </div>
+    </div>
+</footer>
+
+<!-- ==================== 侧边浮动栏 ==================== -->
+<div class="float-bar">
+    <a href="quote.html" class="float-btn quote">报价</a>
+    <a href="tel:13850000033" class="float-btn phone">📞</a>
+    <button class="float-btn wechat">💬</button>
+</div>
+
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+</body>
+</html>

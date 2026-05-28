@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>案例展示 — 艺鸿展览</title>
+    <meta name="description" content="艺鸿展览500+成功案例展示，覆盖科技、汽车、消费品、医疗、教育等多个行业。">
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body data-page="cases.html">
+
+<!-- ==================== 顶部导航 ==================== -->
+<header class="header">
+    <div class="header-inner">
+        <a href="index.html" class="logo">
+            <div class="logo-icon">艺</div>
+            艺鸿展览<span>.com</span>
+        </a>
+        <nav class="nav">
+            <a href="index.html">首页</a>
+            <a href="cases.html" class="active">案例展示</a>
+            <a href="services.html">服务项目</a>
+            <a href="about.html">关于我们</a>
+            <a href="news.html">新闻资讯</a>
+            <a href="contact.html">联系我们</a>
+            <a href="quote.html" class="btn btn-accent" style="padding:8px 20px;font-size:13px;">在线报价</a>
+        </nav>
+        <button class="mobile-toggle" aria-label="菜单">
+            <span></span><span></span><span></span>
+        </button>
+    </div>
+</header>
+
+<!-- ==================== 页面横幅 ==================== -->
+<section class="page-banner">
+    <div class="container">
+        <h1>案例展示</h1>
+        <p>500+成功案例，覆盖科技、汽车、消费品、医疗、教育等行业</p>
+    </div>
+</section>
+
+<!-- ==================== 筛选栏 ==================== -->
+<div class="filter-bar" id="case-filter-bar">
+    <div class="container">
+        <!-- 由JS动态生成 -->
+    </div>
+</div>
+
+<!-- ==================== 案例列表 ==================== -->
+<section class="section">
+    <div class="container">
+        <div class="cases-grid" id="cases-grid">
+            <!-- 由JS动态生成 -->
+        </div>
+        <div class="text-center" style="margin-top:40px;color:var(--text-light);font-size:14px;" id="case-count">
+            <!-- 由JS更新 -->
+        </div>
+    </div>
+</section>
+
+<!-- ==================== 页脚 ==================== -->
+<footer class="footer">
+    <div class="container">
+        <div class="footer-grid">
+            <div class="footer-brand">
+                <a href="index.html" class="logo">
+                    <div class="logo-icon">艺</div>
+                    艺鸿展览<span>.com</span>
+                </a>
+                <p>厦门市艺鸿会议展览服务有限公司<br>专注展览展示设计搭建一站式服务</p>
+            </div>
+            <div>
+                <h3>快速链接</h3>
+                <a href="cases.html">案例展示</a>
+                <a href="services.html">服务项目</a>
+                <a href="about.html">关于我们</a>
+                <a href="news.html">新闻资讯</a>
+            </div>
+            <div>
+                <h3>服务项目</h3>
+                <a href="services.html#design">展台设计</a>
+                <a href="services.html#construction">特装搭建</a>
+                <a href="services.html#standard">标准展位</a>
+                <a href="services.html#furniture">展具租赁</a>
+            </div>
+            <div>
+                <h3>联系方式</h3>
+                <p>电话：13850000033</p>
+                <p>邮箱：info@yihongexpo.com</p>
+                <p>微信：13850000033</p>
+                <p>地址：厦门市思明区明发国际新城15号701</p>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p>© 2024 厦门市艺鸿会议展览服务有限公司 版权所有</p>
+        </div>
+    </div>
+</footer>
+
+<!-- ==================== 侧边浮动栏 ==================== -->
+<div class="float-bar">
+    <a href="quote.html" class="float-btn quote">报价</a>
+    <a href="tel:13850000033" class="float-btn phone">📞</a>
+    <button class="float-btn wechat">💬</button>
+</div>
+
+<!-- ==================== JavaScript ==================== -->
+<script src="js/data.js"></script>
+<script src="js/main.js"></script>
+<script>
+/* 案例页：渲染筛选按钮和案例卡片 */
+document.addEventListener('DOMContentLoaded', function() {
+    /* 渲染筛选按钮 */
+    var filterBar = document.getElementById('case-filter-bar');
+    var filterContainer = filterBar.querySelector('.container');
+
+    var filterHtml = '';
+    CASE_CATEGORIES.forEach(function(cat, idx) {
+        filterHtml += '<button class="filter-btn' + (idx === 0 ? ' active' : '') + '" data-filter="' + cat.id + '">' + cat.label + '</button>';
+    });
+    filterContainer.innerHTML = filterHtml;
+
+    /* 重新绑定筛选功能 */
+    if (typeof initFilterBar === 'function') initFilterBar();
+
+    /* 渲染案例卡片 */
+    var grid = document.getElementById('cases-grid');
+    var iconMap = {
+        '科技': '💻', '体育': '⚽', '汽车': '🚗', '消费品': '📦',
+        '医疗': '🏥', '教育': '📚', '政府/协会': '🏛️'
+    };
+
+    var html = '';
+    CASE_DATA.forEach(function(c) {
+        var icon = iconMap[c.category] || '🏢';
+        var firstTag = c.tags[0] || '';
+        html += '<div class="case-card fade-in" data-category="' + c.category + '">' +
+            '<div class="case-img" style="cursor:default;">' +
+                icon +
+                '<span class="case-tag">' + firstTag + '</span>' +
+            '</div>' +
+            '<div class="case-body">' +
+                '<h3>' + c.title + '</h3>' +
+                '<div class="case-meta">' + c.location + ' · ' + c.area + ' · ' + c.year + '</div>' +
+                '<p>' + c.desc.substring(0, 80) + '...</p>' +
+                '<div style="margin-top:12px;display:flex;gap:6px;flex-wrap:wrap;">' +
+                    c.tags.map(function(t) {
+                        return '<span style="background:var(--bg-gray);padding:2px 10px;border-radius:12px;font-size:12px;color:var(--text-light);">' + t + '</span>';
+                    }).join('') +
+                '</div>' +
+            '</div>' +
+        '</div>';
+    });
+    grid.innerHTML = html;
+
+    /* 更新案例数量 */
+    var countEl = document.getElementById('case-count');
+    countEl.textContent = '共 ' + CASE_DATA.length + ' 个案例';
+
+    /* 重新触发滚动动画 */
+    if (typeof initScrollAnimations === 'function') initScrollAnimations();
+});
+</script>
+</body>
+</html>
