@@ -234,6 +234,56 @@
         .input-area .send-btn:disabled { opacity: 0.4; }
         .input-area .send-btn:active { transform: scale(0.95); }
 
+        /* ========== 文件上传 ========== */
+        .upload-btn {
+            width: 44px; height: 44px;
+            background: none; border: none;
+            border-radius: 50%;
+            font-size: 22px;
+            cursor: pointer;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #888;
+        }
+        .upload-btn:active { color: #2e86c1; }
+        .file-preview {
+            display: none;
+            flex-wrap: wrap; gap: 8px;
+            padding: 8px 14px 0 14px;
+            background: #fff;
+        }
+        .file-preview.has-files { display: flex; }
+        .file-chip {
+            display: flex; align-items: center; gap: 6px;
+            background: #f0f4f8;
+            border-radius: 8px;
+            padding: 6px 10px;
+            font-size: 13px;
+            max-width: 220px;
+        }
+        .file-chip .fname {
+            overflow: hidden; text-overflow: ellipsis;
+            white-space: nowrap; flex: 1;
+        }
+        .file-chip .fdel {
+            cursor: pointer; color: #aaa;
+            font-size: 14px; line-height: 1;
+        }
+        .file-chip .fdel:hover { color: #e74c3c; }
+        .chat-img-wrap {
+            margin-top: 8px;
+            border-radius: 8px;
+            overflow: hidden;
+            max-width: 240px;
+        }
+        .chat-img-wrap img {
+            width: 100%; height: auto;
+            display: block;
+            border-radius: 8px;
+        }
+
         .welcome-msg {
             text-align: center;
             padding: 40px 20px;
@@ -308,8 +358,11 @@
             </div>
         </div>
     </div>
+    <div class="file-preview" id="filePreview"></div>
+    <input type="file" id="fileInput" accept="image/*,.txt,.csv,.json,.md,.pdf" multiple style="display:none">
 
     <div class="input-area">
+        <button class="upload-btn" id="uploadBtn" type="button" onclick="document.getElementById('fileInput').click()">📎</button>
         <textarea id="inputBox" rows="1" placeholder="想问什么直接说..." oninput="autoResize(this)" onkeydown="handleKey(event)"></textarea>
         <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
     </div>
@@ -398,19 +451,35 @@ function getSystemPrompt() {
 async function sendMessage() {
     const input = document.getElementById('inputBox');
     const text = input.value.trim();
-    if (!text || isSending) return;
+    if (!text && selectedFiles.length === 0) return;
+    if (isSending) return;
+
+    // 复制并清空文件列表
+    const currentFiles = selectedFiles.slice();
+    selectedFiles = [];
+    renderFileChips();
 
     input.value = '';
     autoResize(input);
-    addMessage(text, 'user');
+
+    // 显示用户消息（含图片预览）
+    let displayText = text || '📎 发送了文件';
+    let extraHtml = '';
+    const imageFiles = currentFiles.filter(function(f) { return f.type === 'image'; });
+    if (imageFiles.length > 0) {
+        extraHtml = imageFiles.map(function(f) {
+            return '<div class="chat-img-wrap"><img src="' + f.dataUrl + '" alt="图片" loading="lazy"></div>';
+        }).join('');
+    }
+    addMessage(displayText, 'user', extraHtml);
+
     isSending = true;
     document.getElementById('sendBtn').disabled = true;
 
-    // 显示打字中
     showTyping();
 
     try {
-        const reply = await callAPI(text);
+        const reply = await callAPI(text, currentFiles);
         hideTyping();
         addMessage(reply, 'bot');
     } catch(err) {
@@ -442,7 +511,7 @@ function autoResize(el) {
 }
 
 /* ========== 消息气泡 ========== */
-function addMessage(text, role) {
+function addMessage(text, role, extraHtml) {
     const welcome = document.getElementById('welcomeMsg');
     if (welcome) welcome.style.display = 'none';
 
@@ -451,9 +520,11 @@ function addMessage(text, role) {
     div.className = 'msg ' + role;
 
     const avatar = role === 'user' ? '👤' : '🧮';
+    let bubbleContent = escapeHtml(text);
+    if (extraHtml) bubbleContent += extraHtml;
     div.innerHTML = `
         <div class="avatar-icon">${avatar}</div>
-        <div class="bubble">${escapeHtml(text)}</div>
+        <div class="bubble">${bubbleContent}</div>
     `;
     list.appendChild(div);
     list.scrollTop = list.scrollHeight;
@@ -482,7 +553,8 @@ function hideTyping() {
 }
 
 /* ========== API 调用 ========== */
-async function callAPI(userMessage) {
+async function callAPI(userMessage, files) {
+    files = files || [];
     const apiKey = document.getElementById('apiKey').value.trim();
     const model = document.getElementById('modelName').value.trim() || 'deepseek-chat';
     const useOpenRouter = document.getElementById('useOpenRouter').checked;
@@ -493,10 +565,38 @@ async function callAPI(userMessage) {
     msgDivs.forEach(b => {
         const parent = b.closest('.msg');
         const role = parent.classList.contains('user') ? 'user' : 'assistant';
-        history.push({ role, content: b.textContent });
+        const content = b.textContent;
+        if (content.trim()) {
+            history.push({ role, content });
+        }
     });
 
     const systemMsg = { role: 'system', content: getSystemPrompt() };
+
+    // 构建用户消息（含文件附件）
+    const textFiles = files.filter(function(f) { return f.type === 'text'; });
+    const imageFiles = files.filter(function(f) { return f.type === 'image'; });
+
+    let messageText = userMessage || '';
+    if (textFiles.length > 0) {
+        const sections = textFiles.map(function(f) {
+            return '【文件：' + f.file.name + '】\n' + f.content;
+        });
+        const prefix = '我上传了以下文件内容，请参考：\n\n' + sections.join('\n\n---\n\n');
+        messageText = prefix + (userMessage ? '\n\n我的问题是：' + userMessage : '');
+    }
+
+    let userMsg;
+    if (imageFiles.length > 0) {
+        const contentParts = [];
+        if (messageText) contentParts.push({ type: 'text', text: messageText });
+        imageFiles.forEach(function(f) {
+            contentParts.push({ type: 'image_url', image_url: { url: f.dataUrl } });
+        });
+        userMsg = { role: 'user', content: contentParts };
+    } else {
+        userMsg = { role: 'user', content: messageText };
+    }
 
     let url, headers, body;
 
@@ -519,7 +619,7 @@ async function callAPI(userMessage) {
 
     body = {
         model: model,
-        messages: [systemMsg, ...history, { role: 'user', content: userMessage }],
+        messages: [systemMsg, ...history, userMsg],
         max_tokens: 2048,
         temperature: 0.7
     };
@@ -546,6 +646,60 @@ function escapeHtml(text) {
         .replace(/</g, '&lt;')
         .replace(/>/g, '&gt;')
         .replace(/\n/g, '<br>');
+}
+
+/* ========== 文件上传 ========== */
+let selectedFiles = [];
+
+document.getElementById('fileInput').addEventListener('change', function(e) {
+    for (const file of e.target.files) {
+        if (file.size > 5 * 1024 * 1024) {
+            alert('文件太大（超过5MB），请选择小一点的文件');
+            continue;
+        }
+        if (file.type.startsWith('image/')) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                selectedFiles.push({ file, dataUrl: ev.target.result, type: 'image' });
+                renderFileChips();
+            };
+            reader.readAsDataURL(file);
+        } else if (file.type.startsWith('text/') || /\.(txt|csv|json|md|xml|log|js|py|html|css)$/i.test(file.name)) {
+            const reader = new FileReader();
+            reader.onload = function(ev) {
+                selectedFiles.push({ file, content: ev.target.result, type: 'text' });
+                renderFileChips();
+            };
+            reader.readAsText(file);
+        } else {
+            alert('不支持的文件类型：' + file.name + '\n（仅支持图片和文本文件）');
+            continue;
+        }
+    }
+    this.value = '';
+});
+
+function renderFileChips() {
+    const el = document.getElementById('filePreview');
+    if (!selectedFiles.length) {
+        el.className = 'file-preview';
+        el.innerHTML = '';
+        return;
+    }
+    el.className = 'file-preview has-files';
+    el.innerHTML = selectedFiles.map(function(f, i) {
+        const icon = f.type === 'image' ? '🖼️' : '📄';
+        return '<div class="file-chip">' +
+            '<span>' + icon + '</span>' +
+            '<span class="fname">' + f.file.name + '</span>' +
+            '<span class="fdel" onclick="removeFile('+i+')">✕</span>' +
+            '</div>';
+    }).join('');
+}
+
+function removeFile(idx) {
+    selectedFiles.splice(idx, 1);
+    renderFileChips();
 }
 
 /* ========== 初始化 ========== */
