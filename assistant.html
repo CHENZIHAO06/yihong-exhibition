@@ -271,13 +271,15 @@
         <input type="text" id="modelName" value="deepseek-chat" placeholder="deepseek-chat 或 gpt-4o-mini 等">
 
         <label style="margin-top:8px;font-size:12px;color:#999;">
-            <input type="checkbox" id="useOpenRouter" checked> 使用 OpenRouter（支持多种模型）
+            <input type="checkbox" id="useOpenRouter" checked> ✅ 推荐：使用 OpenRouter（浏览器兼容性最好）
         </label>
 
         <button class="setup-btn" onclick="startChat()">💬 开始聊天</button>
         <div class="setup-tip">
-            API Key 只保存在你的手机浏览器中，不会上传到任何服务器<br>
-            需要 OpenRouter Key？<a href="https://openrouter.ai/keys" target="_blank">去获取 →</a>
+            API Key 只保存在你的手机浏览器中，不会上传到任何服务器<br><br>
+            📌 <strong>推荐用 OpenRouter</strong>：浏览器直接可用，支持 DeepSeek<br>
+            🔑 <a href="https://openrouter.ai/keys" target="_blank">获取 OpenRouter Key →</a><br>
+            ❌ DeepSeek 官方 API 在浏览器可能被拦截，<strong>取消勾选即可尝试</strong>
         </div>
     </div>
 </div>
@@ -413,7 +415,14 @@ async function sendMessage() {
         addMessage(reply, 'bot');
     } catch(err) {
         hideTyping();
-        addMessage('😅 马姐，我出了点小问题：' + err.message + '\n\n您检查一下 API Key 有没有填对？', 'bot');
+        const msg = err.message + '';
+        let hint = '您检查一下 API Key 有没有填对？';
+        if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('CORS')) {
+            hint = '这是浏览器的跨域限制问题。\n✅ 解决办法：勾选「使用 OpenRouter」再试\n🔑 去 openrouter.ai/keys 免费申请 Key';
+        } else if (msg.includes('401') || msg.includes('unauthorized') || msg.includes('invalid')) {
+            hint = 'API Key 填错了，请检查有没有复制完整（包含 sk- 开头）';
+        }
+        addMessage('😅 小艺出了点问题：\n' + hint, 'bot');
     }
 
     isSending = false;
