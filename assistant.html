@@ -338,6 +338,7 @@
         </div>
 
         <button class="setup-btn" onclick="startChat()">💬 开始聊天</button>
+        <button class="setup-btn" type="button" style="background:#95a5a6;margin-top:8px;font-size:14px;" onclick="clearHistory();return false;">🗑️ 清除聊天记录</button>
         <div class="setup-tip">
             🔑 API Key 只保存在你的手机浏览器中，不会上传到任何服务器<br>
             💡 选「自定义」可接入任意 OpenAI 兼容 API（如 Claude）
@@ -381,8 +382,10 @@
 
 <script>
 /* ========== 状态 ========== */
-let messages = [];
+let messages = [];      // 聊天记录 [{ role, content, timestamp }]
 let isSending = false;
+const HISTORY_KEY = 'yihong_chat_history';
+const MAX_HISTORY = 100;
 
 /* ========== 本地存储 ========== */
 const STORAGE_KEY = 'yihong_quote_config';
@@ -454,6 +457,8 @@ function startChat() {
     saveConfig();
     document.getElementById('setupPage').classList.add('hidden');
     document.getElementById('chatPage').classList.add('active');
+    // 加载历史聊天记录
+    loadHistory();
 }
 
 function showSettings() {
@@ -582,7 +587,7 @@ function autoResize(el) {
 }
 
 /* ========== 消息气泡 ========== */
-function addMessage(text, role, extraHtml) {
+function renderMessageToDOM(text, role, extraHtml) {
     const welcome = document.getElementById('welcomeMsg');
     if (welcome) welcome.style.display = 'none';
 
@@ -599,6 +604,47 @@ function addMessage(text, role, extraHtml) {
     `;
     list.appendChild(div);
     list.scrollTop = list.scrollHeight;
+}
+
+function addMessage(text, role, extraHtml) {
+    renderMessageToDOM(text, role, extraHtml);
+    // 保存到聊天记录（不含图片，只存文字）
+    if (!extraHtml) {
+        messages.push({ role, content: text, timestamp: Date.now() });
+        saveHistory();
+    }
+}
+
+function saveHistory() {
+    try {
+        if (messages.length > MAX_HISTORY) {
+            messages = messages.slice(-MAX_HISTORY);
+        }
+        localStorage.setItem(HISTORY_KEY, JSON.stringify(messages));
+    } catch(e) { /* localStorage 满了就算了 */ }
+}
+
+function loadHistory() {
+    try {
+        const saved = localStorage.getItem(HISTORY_KEY);
+        if (saved) {
+            messages = JSON.parse(saved);
+            for (const msg of messages) {
+                renderMessageToDOM(msg.content, msg.role);
+            }
+            return messages.length > 0;
+        }
+    } catch(e) {}
+    return false;
+}
+
+function clearHistory() {
+    if (messages.length === 0) return;
+    if (!confirm('确定清除所有聊天记录吗？')) return;
+    messages = [];
+    localStorage.removeItem(HISTORY_KEY);
+    const list = document.getElementById('messageList');
+    list.innerHTML = '<div class="welcome-msg" id="welcomeMsg">\n            <div class="icon">👋</div>\n            <h3>马姐，您好！</h3>\n            <p>我是小艺，有什么需要帮忙的尽管说~</p>\n            <div class="tips">\n                <div>📌 试试问我：</div>\n                <div>"帮我算个60㎡展台的报价"</div>\n                <div>"客户说贵了，帮我写个回复"</div>\n                <div>"帮我写一份展会通知"</div>\n            </div>\n        </div>';
 }
 
 function showTyping() {
