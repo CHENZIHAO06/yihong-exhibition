@@ -317,19 +317,30 @@
         <label>🔑 API 密钥</label>
         <input type="password" id="apiKey" placeholder="输入你的 API Key">
 
-        <label>🤖 模型选择</label>
-        <input type="text" id="modelName" value="deepseek-chat" placeholder="deepseek-chat 或 gpt-4o-mini 等">
+        <label>🤖 模型名称</label>
+        <input type="text" id="modelName" value="claude-sonnet-4-20250514" placeholder="claude-sonnet-4-20250514 等">
 
-        <label style="margin-top:8px;font-size:12px;color:#999;">
-            <input type="checkbox" id="useOpenRouter" checked> ✅ 推荐：使用 OpenRouter（浏览器兼容性最好）
-        </label>
+        <label style="margin-top:12px;font-size:13px;font-weight:600;">📡 API 提供商</label>
+        <div style="display:flex;gap:12px;margin-top:6px;flex-wrap:wrap;">
+            <label style="font-size:14px;font-weight:400;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="radio" name="provider" value="openrouter" checked> OpenRouter
+            </label>
+            <label style="font-size:14px;font-weight:400;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="radio" name="provider" value="deepseek"> DeepSeek
+            </label>
+            <label style="font-size:14px;font-weight:400;display:flex;align-items:center;gap:4px;cursor:pointer;">
+                <input type="radio" name="provider" value="custom"> 自定义
+            </label>
+        </div>
+        <div id="customUrlRow" style="display:none;margin-top:8px;">
+            <label style="font-size:13px;">API 地址</label>
+            <input type="text" id="customApiUrl" value="https://xiaoma.best/v1" placeholder="https://xxx.com/v1">
+        </div>
 
         <button class="setup-btn" onclick="startChat()">💬 开始聊天</button>
         <div class="setup-tip">
-            API Key 只保存在你的手机浏览器中，不会上传到任何服务器<br><br>
-            📌 <strong>推荐用 OpenRouter</strong>：浏览器直接可用，支持 DeepSeek<br>
-            🔑 <a href="https://openrouter.ai/keys" target="_blank">获取 OpenRouter Key →</a><br>
-            ❌ DeepSeek 官方 API 在浏览器可能被拦截，<strong>取消勾选即可尝试</strong>
+            🔑 API Key 只保存在你的手机浏览器中，不会上传到任何服务器<br>
+            💡 选「自定义」可接入任意 OpenAI 兼容 API（如 Claude）
         </div>
     </div>
 </div>
@@ -382,19 +393,56 @@ function loadConfig() {
         if (saved) {
             const config = JSON.parse(saved);
             document.getElementById('apiKey').value = config.apiKey || '';
-            document.getElementById('modelName').value = config.model || 'deepseek-chat';
-            document.getElementById('useOpenRouter').checked = config.useOpenRouter !== false;
+            document.getElementById('modelName').value = config.model || 'claude-sonnet-4-20250514';
+            // 恢复提供商选择
+            const provider = config.provider || 'openrouter';
+            const radio = document.querySelector('input[name="provider"][value="' + provider + '"]');
+            if (radio) radio.checked = true;
+            if (config.customUrl) {
+                document.getElementById('customApiUrl').value = config.customUrl;
+            }
+            toggleCustomUrl();
         }
     } catch(e) {}
 }
 
 function saveConfig() {
+    const provider = document.querySelector('input[name="provider"]:checked');
     localStorage.setItem(STORAGE_KEY, JSON.stringify({
         apiKey: document.getElementById('apiKey').value,
         model: document.getElementById('modelName').value,
-        useOpenRouter: document.getElementById('useOpenRouter').checked
+        provider: provider ? provider.value : 'openrouter',
+        customUrl: document.getElementById('customApiUrl').value
     }));
 }
+
+function toggleCustomUrl() {
+    const sel = document.querySelector('input[name="provider"]:checked');
+    const row = document.getElementById('customUrlRow');
+    row.style.display = (sel && sel.value === 'custom') ? 'block' : 'none';
+    // 切换时推荐对应的模型名
+    const modelInput = document.getElementById('modelName');
+    if (sel) {
+        const suggestions = {
+            openrouter: 'gpt-4o-mini',
+            deepseek: 'deepseek-chat',
+            custom: 'claude-sonnet-4-20250514'
+        };
+        // 只在当前值是默认值时自动切换
+        const current = modelInput.value;
+        const defaults = ['gpt-4o-mini', 'deepseek-chat', 'claude-sonnet-4-20250514'];
+        if (defaults.includes(current) || !current) {
+            modelInput.value = suggestions[sel.value] || current;
+        }
+    }
+}
+
+// 监听提供商切换
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('input[name="provider"]').forEach(function(r) {
+        r.addEventListener('change', toggleCustomUrl);
+    });
+});
 
 /* ========== 启动聊天 ========== */
 function startChat() {
@@ -556,8 +604,11 @@ function hideTyping() {
 async function callAPI(userMessage, files) {
     files = files || [];
     const apiKey = document.getElementById('apiKey').value.trim();
-    const model = document.getElementById('modelName').value.trim() || 'deepseek-chat';
-    const useOpenRouter = document.getElementById('useOpenRouter').checked;
+    const model = document.getElementById('modelName').value.trim() || 'claude-sonnet-4-20250514';
+    const provider = document.querySelector('input[name="provider"]:checked');
+    const useOpenRouter = provider && provider.value === 'openrouter';
+    const useDeepSeek = provider && provider.value === 'deepseek';
+    const useCustom = provider && provider.value === 'custom';
 
     // 构建消息历史
     const history = [];
@@ -608,9 +659,18 @@ async function callAPI(userMessage, files) {
             'HTTP-Referer': window.location.origin,
             'X-Title': '艺鸿报价助手'
         };
-    } else {
-        // DeepSeek 官方 API
+    } else if (useDeepSeek) {
         url = 'https://api.deepseek.com/v1/chat/completions';
+        headers = {
+            'Authorization': 'Bearer ' + apiKey,
+            'Content-Type': 'application/json'
+        };
+    } else {
+        // 自定义 API（如 Claude 第三方代理）
+        let baseUrl = document.getElementById('customApiUrl').value.trim();
+        if (!baseUrl) baseUrl = 'https://xiaoma.best/v1';
+        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+        url = baseUrl + '/chat/completions';
         headers = {
             'Authorization': 'Bearer ' + apiKey,
             'Content-Type': 'application/json'
