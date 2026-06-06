@@ -339,6 +339,9 @@
 
         <button class="setup-btn" onclick="startChat()">💬 开始聊天</button>
         <button class="setup-btn" type="button" style="background:#95a5a6;margin-top:8px;font-size:14px;" onclick="clearHistory();return false;">🗑️ 清除聊天记录</button>
+        <button class="setup-btn" id="learnBtn" type="button" style="background:#27ae60;margin-top:8px;font-size:14px;" onclick="startLearning();return false;">📊 智能学习 · 分析行业数据</button>
+        <div id="learningResult" style="display:none;margin-top:12px;background:#f8f9fa;border-radius:10px;padding:14px;font-size:13px;line-height:1.6;white-space:pre-wrap;max-height:300px;overflow-y:auto;border:1px solid #e8e8e8;"></div>
+        <button id="exportBtn" type="button" class="setup-btn" style="display:none;margin-top:8px;font-size:14px;background:#8e44ad;" onclick="exportLearningData()">💾 导出数据到 D 盘</button>
         <div class="setup-tip">
             🔑 API Key 只保存在你的手机浏览器中，不会上传到任何服务器<br>
             💡 选「自定义」可接入任意 OpenAI 兼容 API（如 Claude）
@@ -386,6 +389,9 @@ let messages = [];      // 聊天记录 [{ role, content, timestamp }]
 let isSending = false;
 const HISTORY_KEY = 'yihong_chat_history';
 const MAX_HISTORY = 100;
+const CONVERSATION_LOG_KEY = 'yihong_conversation_log';
+const INSIGHTS_KEY = 'yihong_insights';
+const MAX_LOG = 500;
 
 /* ========== 本地存储 ========== */
 const STORAGE_KEY = 'yihong_quote_config';
@@ -520,7 +526,7 @@ function getSystemPrompt() {
 
 ## 报价特别说明
 当马姐让你写报价或算价格时，直接算好完整的给她，格式清晰，包含项目清单、小计、税和总价。
-涉及大金额时提醒她「建议和工厂确认一下」。`;
+涉及大金额时提醒她「建议和工厂确认一下」。${getInsightContext()}`;
 }
 
 /* ========== 发送消息 ========== */
@@ -558,6 +564,8 @@ async function sendMessage() {
         const reply = await callAPI(text, currentFiles);
         hideTyping();
         addMessage(reply, 'bot');
+        // 自动记录对话到行业数据
+        recordConversation(text, reply);
     } catch(err) {
         hideTyping();
         const msg = err.message + '';
@@ -645,6 +653,170 @@ function clearHistory() {
     localStorage.removeItem(HISTORY_KEY);
     const list = document.getElementById('messageList');
     list.innerHTML = '<div class="welcome-msg" id="welcomeMsg">\n            <div class="icon">👋</div>\n            <h3>马姐，您好！</h3>\n            <p>我是小艺，有什么需要帮忙的尽管说~</p>\n            <div class="tips">\n                <div>📌 试试问我：</div>\n                <div>"帮我算个60㎡展台的报价"</div>\n                <div>"客户说贵了，帮我写个回复"</div>\n                <div>"帮我写一份展会通知"</div>\n            </div>\n        </div>';
+}
+
+/* ========== 数据记录 & 行业学习 ========== */
+function recordConversation(userMsg, botReply) {
+    if (!userMsg || !botReply) return;
+    try {
+        var log = [];
+        var saved = localStorage.getItem(CONVERSATION_LOG_KEY);
+        if (saved) log = JSON.parse(saved);
+        log.push({
+            time: new Date().toISOString(),
+            ask: userMsg,
+            reply: botReply.substring(0, 500)
+        });
+        if (log.length > MAX_LOG) log = log.slice(-MAX_LOG);
+        localStorage.setItem(CONVERSATION_LOG_KEY, JSON.stringify(log));
+    } catch(e) {}
+}
+
+function getInsightContext() {
+    try {
+        var saved = localStorage.getItem(INSIGHTS_KEY);
+        if (saved) {
+            var insights = JSON.parse(saved);
+            if (insights && insights.content) {
+                return '\n\n## 从历史对话中学习的行业经验\n以下是 AI 分析马姐对话后总结的行业经验，你在回答时应该参考这些：\n\n' + insights.content + '\n\n（来源：最近' + insights.conversationCount + '条对话的智能分析）';
+            }
+        }
+    } catch(e) {}
+    return '';
+}
+
+async function startLearning() {
+    var logStr = localStorage.getItem(CONVERSATION_LOG_KEY);
+    if (!logStr) { alert('还没有对话记录，先用一段时间再来~'); return; }
+    var log = JSON.parse(logStr);
+    if (log.length < 5) { alert('对话还不够多（至少需要 5 条），再用用再来~'); return; }
+
+    var btn = document.getElementById('learnBtn');
+    var resultDiv = document.getElementById('learningResult');
+    if (!btn || !resultDiv) return;
+
+    btn.textContent = '⏳ 正在分析中...';
+    btn.disabled = true;
+    resultDiv.style.display = 'block';
+    resultDiv.innerHTML = '<em>⏳ AI 正在分析 ' + log.length + ' 条对话，请稍等...</em>';
+
+    var recent = log.slice(-50);
+    var convText = '';
+    for (var i = 0; i < recent.length; i++) {
+        convText += '问：' + recent[i].ask + '\n答：' + recent[i].reply + '\n---\n';
+    }
+
+    var analyzePrompt = '请分析以下展览行业客户对话记录，提取：\n\n1. **高频问题**（客户/马姐反复问到的事）\n2. **客户痛点**（客户在意什么、反复担心的点）\n3. **报价规律**（不同地区/类型有什么价格变化趋势）\n4. **助手改进建议**（小艺哪里答得不够好，应该怎么改进）\n5. **行业关键词**（5-10个当前最常涉及的关键词）\n\n对话记录：\n' + convText + '\n请用中文输出，分点清晰，适合直接给马姐阅读。';
+
+    try {
+        var insights = await callAPIRaw(
+            '你是一个展览行业数据分析师。你的任务是从客户对话中提取有价值的行业洞察。',
+            analyzePrompt
+        );
+        localStorage.setItem(INSIGHTS_KEY, JSON.stringify({
+            time: new Date().toISOString(),
+            content: insights,
+            conversationCount: recent.length
+        }));
+        resultDiv.innerHTML = '<strong>📊 分析完成！</strong>（基于最近 ' + recent.length + ' 条对话）\n\n' + insights;
+        document.getElementById('exportBtn').style.display = 'block';
+    } catch(e) {
+        resultDiv.innerHTML = '<span style="color:#e74c3c;">❌ 分析失败：' + e.message + '</span>';
+    }
+    btn.textContent = '📊 智能学习 · 分析行业数据';
+    btn.disabled = false;
+}
+
+async function callAPIRaw(systemPrompt, userPrompt) {
+    var apiKey = document.getElementById('apiKey').value.trim();
+    var model = document.getElementById('modelName').value.trim() || 'claude-sonnet-4-20250514';
+    var provider = document.querySelector('input[name="provider"]:checked');
+    var useOpenRouter = provider && provider.value === 'openrouter';
+    var useDeepSeek = provider && provider.value === 'deepseek';
+
+    var url, headers;
+    if (useOpenRouter) {
+        url = 'https://openrouter.ai/api/v1/chat/completions';
+        headers = { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json', 'HTTP-Referer': window.location.origin, 'X-Title': '艺鸿助手' };
+    } else if (useDeepSeek) {
+        url = 'https://api.deepseek.com/v1/chat/completions';
+        headers = { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' };
+    } else {
+        var baseUrl = document.getElementById('customApiUrl').value.trim();
+        if (!baseUrl) baseUrl = 'https://xiaoma.best/v1';
+        if (baseUrl.endsWith('/')) baseUrl = baseUrl.slice(0, -1);
+        url = baseUrl + '/chat/completions';
+        headers = { 'Authorization': 'Bearer ' + apiKey, 'Content-Type': 'application/json' };
+    }
+
+    var body = {
+        model: model,
+        messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: userPrompt }
+        ],
+        max_tokens: 2048,
+        temperature: 0.5
+    };
+
+    var resp = await fetch(url, { method: 'POST', headers: headers, body: JSON.stringify(body) });
+    if (!resp.ok) {
+        var errText = await resp.text();
+        throw new Error('API ' + resp.status + ': ' + errText.substring(0, 200));
+    }
+    var data = await resp.json();
+    return data.choices[0].message.content;
+}
+
+async function exportLearningData() {
+    var logStr = localStorage.getItem(CONVERSATION_LOG_KEY);
+    var insightsStr = localStorage.getItem(INSIGHTS_KEY);
+
+    var md = '# 艺鸿行业数据报告\n';
+    md += '> 导出时间：' + new Date().toLocaleString('zh-CN') + '\n';
+    md += '> 公司：厦门市艺鸿会议展览服务有限公司\n\n---\n\n';
+
+    if (insightsStr) {
+        var insights = JSON.parse(insightsStr);
+        md += '## 📊 最新行业分析\n';
+        md += '> 基于 ' + insights.conversationCount + ' 条对话 | 分析时间：' + new Date(insights.time).toLocaleString('zh-CN') + '\n\n';
+        md += insights.content + '\n\n---\n\n';
+    }
+
+    if (logStr) {
+        var log = JSON.parse(logStr);
+        md += '## 💬 对话记录（共 ' + log.length + ' 条）\n\n';
+        for (var i = log.length - 1; i >= 0; i--) {
+            var entry = log[i];
+            md += '### ' + new Date(entry.time).toLocaleString('zh-CN') + '\n';
+            md += '**马姐问：** ' + entry.ask + '\n\n';
+            md += '**小艺答：** ' + entry.reply + '\n\n---\n\n';
+        }
+    }
+
+    var blob = new Blob([md], { type: 'text/markdown;charset=utf-8' });
+    var filename = '艺鸿行业数据_' + new Date().toISOString().slice(0,10) + '.md';
+
+    try {
+        var handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: 'Markdown', accept: { 'text/markdown': ['.md'] } }]
+        });
+        var writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        alert('✅ 已保存！建议放到 D:\\艺鸿行业数据\\ 文件夹');
+    } catch(e) {
+        var a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        setTimeout(function() {
+            alert('💡 文件已下载！请移动到 D:\\艺鸿行业数据\\ 文件夹中保存');
+        }, 500);
+    }
 }
 
 function showTyping() {
